@@ -26,6 +26,7 @@ class Data
         $post = array();
         $post['thread_id'] = $DB->value("SELECT currval('thread_id_seq')");
         $post['body'] = $data['body'];
+        $this->set_value('date_posted', $DB->value("SELECT CURRENT_TIMESTAMP"));
 
         $Search = new Search("thread");
         if($Search->thread_insert($this->insert,$post['thread_id']))
@@ -71,6 +72,7 @@ class Data
     $DB->begin();
     if($DB->insert("thread_post",$this->insert,array_keys($this->insert)))
     {
+      $this->set_value('date_posted', $DB->value("SELECT CURRENT_TIMESTAMP"));
       $Search = new Search;
       if($Search->thread_post_insert($this->insert,$DB->value("SELECT currval('thread_post_id_seq')")))
       {

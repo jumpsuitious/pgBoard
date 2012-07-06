@@ -1,29 +1,127 @@
 <?php
 class Search
 {
+  function _exec ($statement, $args, $msg = "DB action failed")
+  {
+    $r = $statement->execute($args);
+    if (!$r)
+    {
+      $e = $statement->errorInfo();
+      $msg = $msg . ": " . $e[2]; // Might leak info
+      trigger_error($msg);
+      //throw new RuntimeException($msg);
+    }
+    return $r;
+  }
+
+  function _connect ()
+  {
+    return new PDO(SPHINXQL_DSN, SPHINXQL_USER, SPHINXQL_PASSWORD);
+  }
+
   function query($query,$index,$offset=0)
   {
-    require_once(DIR."lib/sphinx/sphinxapi.php");
-    $sphinx = new SphinxClient();
-    $sphinx->setServer(SPHINX_HOST,SPHINX_PORT);
-    $sphinx->SetLimits($offset,100,10000000);
-    $sphinx->SetMatchMode(SPH_MATCH_EXTENDED);
-    $sphinx->SetSortMode(SPH_SORT_ATTR_DESC,'date_posted');
-    $res = $sphinx->Query($query,$index);
-    return $res;
+    $sphinx = $this->_connect();
+
+    $empty = array("matches"=>array(), "total"=>0);
+
+    if ($index != "thread" && $index != "thread_post") return $empty;
+    $offset = intval($offset);
+
+    $s = $sphinx->prepare("SELECT COUNT(*) FROM $index WHERE MATCH(?) GROUP BY member_id");
+    if (!$this->_exec($s,array($query), "Failed to query index index")) return $empty;
+    $total = $s->fetchColumn();
+
+    $s = $sphinx->prepare("SELECT id FROM $index WHERE MATCH(?) ORDER BY date_posted DESC LIMIT $offset,100");
+    if (!$this->_exec($s,array($query), "Failed to query index index")) return $empty;
+    $r = array("matches"=>$s->fetchAll(PDO::FETCH_COLUMN, 0), "total"=>$total);
+
+    return $r;
   }
+
   function insert($type,$doc) { return true; }
   function delete($type,$id) { return true; }
-  function thread_insert($data,$id) { return true; }
-  function thread_post_insert($data,$id) { return true; }
+
+  function thread_insert($data,$id)
+  {
+    if (strlen($data['subject']) > 64000) return true; // Don't index
+    $sphinx = $this->_connect();
+    $s = $sphinx->prepare("INSERT INTO thread (id, subject, member_id, date_posted) VALUES (?, ?, ?, ?)");
+    $q = array($id, $data['subject'], $data['member_id'], strtotime($data['date_posted']));
+    // Using strtotime() is a bit of a hack.  What we really want to do is
+    // get UNIX_TIMESTAMP(CURRENT_TIMESTAMP) from postgres, but that's also
+    // a bit of a hack...
+    //print_r($q);
+    if (!$this->_exec($s,$q, "Failed to insert into thread index")) return false;
+    return true;
+  }
+
+  function thread_post_insert($data,$id)
+  {
+    if (strlen($data['body']) > 64000) return true; // Don't index
+    $sphinx = $this->_connect();
+    $s = $sphinx->prepare("INSERT INTO thread_post (id, body, member_id, thread_id, date_posted) VALUES (?, ?, ?, ?, ?)");
+    $q = array($id, $data['body'], $data['member_id'], $data['thread_id'], strtotime($data['date_posted']));
+    // Using strtotime() is a bit of a hack.  What we really want to do is
+    // get UNIX_TIMESTAMP(CURRENT_TIMESTAMP) from postgres, but that's also
+    // a bit of a hack...
+    //print_r($q);
+    if (!$this->_exec($s, $q, "Failed to insert into post index")) return false;
+    return true;
+  }
+
   function message_insert($data,$id) { return true; }
   function message_post_insert($data,$id) { return true; }
-  function thread_update($data) { return true; }
-  function thread_post_update($data,$id) { return true; }
+
+  function thread_update($data)
+  {
+    //XXX: I think this isn't presently used anywhere.  If it is, it
+    //     should probably have the thread ID included too.  Just
+    //     fail for now.
+    return false;
+  }
+
+  function thread_post_update($data,$id)
+  {
+    if (strlen($data['body']) > 64000)
+    {
+      return $this->thread_post_delete($id);
+    }
+
+    $sphinx = $this->_connect();
+    $id = intval($id);
+    $s = $sphinx->prepare("SELECT member_id, thread_id, date_posted FROM thread_post WHERE id=" . $id);
+    if (!$this->_exec($s, array(), "Failed to load post index")) return false;
+    $post = $s->fetch(PDO::FETCH_ASSOC);
+    $post['id'] = $id;
+    $post['body'] = $data['body'];
+
+    $s = $sphinx->prepare("REPLACE INTO thread_post (id, body, member_id, thread_id, date_posted) VALUES (?, ?, ?, ?, ?)");
+    $post = array($post['id'], $post['body'], $post['member_id'], $post['thread_id'], $post['date_posted']);
+    //print_r($post);
+    if (!$this->_exec($s, $post, "Failed to update post index")) return false;
+
+    return true;
+  }
+
   function message_update($data) { return true; }
   function message_post_update($data) { return true; }
-  function thread_delete($id) { return true; }
-  function thread_post_delete($id) { return true; }
+
+  function thread_delete($id)
+  {
+    //XXX: Not sure what the semantics are for this, because I don't think
+    //     it's ever actually called.  Just fail for now.
+    return false;
+  }
+
+  function thread_post_delete($id)
+  {
+    $sphinx = $this->_connect();
+    $s = $sphinx->prepare("DELETE FROM thread_post WHERE id=?");
+    if (!$this->_exec($s, array($id), "Failed to delete from post index")) return false;
+    return true;
+  }
+
   function message_delete($id) { return true; }
   function message_post_delete($id) { return true; }
 }
