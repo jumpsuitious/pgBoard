@@ -4,7 +4,7 @@ Requirements:
 Apache /w mod_rewrite enabled
 PHP 5x
 PostgreSQL 8x
-Sphinx 0.9x
+Sphinx 2.0.1+
 
 Caveats:
 Currently the board software does not support being installed in a folder, ie:
