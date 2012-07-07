@@ -4,8 +4,11 @@ define("LANG","en");
 define("ADMIN_EMAIL","admin@domain.com");
 define("DB","dbname=board user=board password=board");
 define("DIR","/path/to/board/www/");
-define("SPHINX_HOST","localhost");
-define("SPHINX_PORT",3312);
+
+define("SPHINXQL_DSN", "mysql:host=127.0.0.1;port=9306;charset=utf8");
+define("SPHINXQL_USER", NULL);
+define("SPHINXQL_PASSWORD", NULL);
+define("MAX_SIZE_TO_INDEX", 64000); // Posts larger than this are not indexed
 
 define("REGISTRATION_OPEN",true);
 define("REGISTRATION_PASSWORD","membersonly"); // set to false to disable this feature

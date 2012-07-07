@@ -44,13 +44,17 @@ class Search
 
   function thread_insert($data,$id)
   {
-    if (strlen($data['subject']) > 64000) return true; // Don't index
+    if (strlen($data['subject']) > MAX_SIZE_TO_INDEX) return true; // Don't index
     $sphinx = $this->_connect();
     $s = $sphinx->prepare("INSERT INTO thread (id, subject, member_id, date_posted) VALUES (?, ?, ?, ?)");
     $q = array($id, $data['subject'], $data['member_id'], strtotime($data['date_posted']));
     // Using strtotime() is a bit of a hack.  What we really want to do is
     // get UNIX_TIMESTAMP(CURRENT_TIMESTAMP) from postgres, but that's also
     // a bit of a hack...
+    //XXX: Watch out for timezone conversion?  (Not important just now since
+    //     we only use timestamp for ordering, but still might want to check
+    //     that we're doing the right thing.)
+
     //print_r($q);
     if (!$this->_exec($s,$q, "Failed to insert into thread index")) return false;
     return true;
@@ -58,14 +62,12 @@ class Search
 
   function thread_post_insert($data,$id)
   {
-    if (strlen($data['body']) > 64000) return true; // Don't index
+    if (strlen($data['body']) > MAX_SIZE_TO_INDEX) return true; // Don't index
     $sphinx = $this->_connect();
     $s = $sphinx->prepare("INSERT INTO thread_post (id, body, member_id, thread_id, date_posted) VALUES (?, ?, ?, ?, ?)");
     $q = array($id, $data['body'], $data['member_id'], $data['thread_id'], strtotime($data['date_posted']));
-    // Using strtotime() is a bit of a hack.  What we really want to do is
-    // get UNIX_TIMESTAMP(CURRENT_TIMESTAMP) from postgres, but that's also
-    // a bit of a hack...
-    //print_r($q);
+    // (See notes on timestamp in thread_insert.)
+
     if (!$this->_exec($s, $q, "Failed to insert into post index")) return false;
     return true;
   }
@@ -83,7 +85,7 @@ class Search
 
   function thread_post_update($data,$id)
   {
-    if (strlen($data['body']) > 64000)
+    if (strlen($data['body']) > MAX_SIZE_TO_INDEX)
     {
       return $this->thread_post_delete($id);
     }
@@ -117,8 +119,9 @@ class Search
   function thread_post_delete($id)
   {
     $sphinx = $this->_connect();
-    $s = $sphinx->prepare("DELETE FROM thread_post WHERE id=?");
-    if (!$this->_exec($s, array($id), "Failed to delete from post index")) return false;
+    $id = intval($id);
+    $s = $sphinx->prepare("DELETE FROM thread_post WHERE id=" . $id);
+    if (!$this->_exec($s, "Failed to delete from post index")) return false;
     return true;
   }
 
