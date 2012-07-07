@@ -14,9 +14,17 @@ class Search
     return $r;
   }
 
-  function _connect ()
+  function _connect ($is_query = FALSE)
   {
     if (!SPHINXQL_DSN) return FALSE;
+
+    if (!$is_query)
+    {
+      // Queries are always okay, but if we're indexing, we might want to
+      // abort here.
+      if  (!ENABLE_RT_INDEXING) return FALSE;
+    }
+
     try
     {
       return new PDO(SPHINXQL_DSN, SPHINXQL_USER, SPHINXQL_PASSWORD);
@@ -51,10 +59,10 @@ class Search
 
   function query($query,$index,$offset=0)
   {
-    $sphinx = $this->_connect();
-    if (!$sphinx) return TRUE;
-
     $empty = array("matches"=>array(), "total"=>0);
+
+    $sphinx = $this->_connect(TRUE);
+    if (!$sphinx) return $empty;
 
     if ($index != "thread" && $index != "thread_post") return $empty;
     $offset = intval($offset);

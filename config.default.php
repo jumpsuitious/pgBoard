@@ -5,10 +5,11 @@ define("ADMIN_EMAIL","admin@domain.com");
 define("DB","dbname=board user=board password=board");
 define("DIR","/path/to/board/www/");
 
-define("SPHINXQL_DSN", "mysql:host=127.0.0.1;port=9306;charset=utf8"); // NULL disables RT indexing
+define("SPHINXQL_DSN", "mysql:host=127.0.0.1;port=9306;charset=utf8"); // NULL disables all search
 define("SPHINXQL_USER", NULL);
 define("SPHINXQL_PASSWORD", NULL);
-define("MAX_SIZE_TO_INDEX", 64000); // Posts larger than this are not indexed
+define("ENABLE_RT_INDEXING", TRUE); // Can be FALSE if you're using non-RT indexing
+define("MAX_SIZE_TO_INDEX", 64000); // Maximum amount of post to index
 define("IGNORE_INDEX_FAILURES", TRUE); // If true, posts succeed even if indexing fails
 
 define("REGISTRATION_OPEN",true);
