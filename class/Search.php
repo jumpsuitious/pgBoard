@@ -17,7 +17,15 @@ class Search
   function _connect ()
   {
     if (!SPHINXQL_DSN) return FALSE;
-    return new PDO(SPHINXQL_DSN, SPHINXQL_USER, SPHINXQL_PASSWORD);
+    try
+    {
+      return new PDO(SPHINXQL_DSN, SPHINXQL_USER, SPHINXQL_PASSWORD);
+    }
+    catch (Exception $e)
+    {
+      trigger_error("Sphinx connection exception: " . $e->getMessage());
+      return FALSE;
+    }
   }
 
   /* Update post $id's body to be $body */
@@ -84,7 +92,7 @@ class Search
     //     that we're doing the right thing.)
 
     //print_r($q);
-    if (!$this->_exec($s,$q, "Failed to insert into thread index")) return FALSE;
+    if (!$this->_exec($s,$q, "Failed to insert into thread index")) return IGNORE_INDEX_FAILURES;
     return TRUE;
   }
 
@@ -100,7 +108,7 @@ class Search
     $q = array($id, $body, $data['member_id'], $data['thread_id'], strtotime($data['date_posted']));
     // (See notes on timestamp in thread_insert().)
 
-    if (!$this->_exec($s, $q, "Failed to insert into post index")) return FALSE;
+    if (!$this->_exec($s, $q, "Failed to insert into post index")) return IGNORE_INDEX_FAILURES;
     return TRUE;
   }
 
@@ -119,7 +127,7 @@ class Search
   {
     $sphinx = $this->_connect();
     if (!$sphinx) return TRUE;
-    return $this->_update_post($sphinx, $id, $data['body']);
+    return $this->_update_post($sphinx, $id, $data['body']) || IGNORE_INDEX_FAILURES;
   }
 
   function message_update($data) { return TRUE; }
@@ -143,7 +151,7 @@ class Search
 
     // Rather than actually DELETE the record and leave a hole, let's just
     // clear out the content.
-    return $this->_update_post($sphinx, $id, '');
+    return $this->_update_post($sphinx, $id, '') || IGNORE_INDEX_FAILURES;
 
     /*
     (Old code that actually deletes the record and leaves a hole.)
