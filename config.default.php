@@ -9,6 +9,7 @@ define("SPHINXQL_DSN", "mysql:host=127.0.0.1;port=9306;charset=utf8"); // NULL d
 define("SPHINXQL_USER", NULL);
 define("SPHINXQL_PASSWORD", NULL);
 define("MAX_SIZE_TO_INDEX", 64000); // Posts larger than this are not indexed
+define("IGNORE_INDEX_FAILURES", TRUE); // If true, posts succeed even if indexing fails
 
 define("REGISTRATION_OPEN",true);
 define("REGISTRATION_PASSWORD","membersonly"); // set to false to disable this feature
