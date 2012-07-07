@@ -67,7 +67,7 @@ class Search
     if ($index != "thread" && $index != "thread_post") return $empty;
     $offset = intval($offset);
 
-    $s = $sphinx->prepare("SELECT COUNT(*) FROM $index WHERE MATCH(?) GROUP BY member_id");
+    $s = $sphinx->prepare("SELECT COUNT(*), 1 AS all FROM $index WHERE MATCH(?) GROUP BY all");
     if (!$this->_exec($s,array($query), "Failed to query index index")) return $empty;
     $total = $s->fetchColumn();
 
@@ -95,9 +95,7 @@ class Search
     // get UNIX_TIMESTAMP(CURRENT_TIMESTAMP) from postgres, but that's also
     // a bit of a hack to do from here, as is doing it from Data and passing
     // it here, so...
-    //XXX: Watch out for timezone conversion?  (Not important just now since
-    //     we only use timestamp for ordering, but still might want to check
-    //     that we're doing the right thing.)
+    //NOTE: The timestamp we're inserting is (or should be!) UTC.
 
     //print_r($q);
     if (!$this->_exec($s,$q, "Failed to insert into thread index")) return IGNORE_INDEX_FAILURES;
