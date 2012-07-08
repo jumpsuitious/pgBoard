@@ -170,7 +170,7 @@ class DB
     }
   }
   
-  // load next tuple as an associative asrray
+  // load next tuple as an associative array
   function load_array()
   {
     // if no sql defined die gracefully
