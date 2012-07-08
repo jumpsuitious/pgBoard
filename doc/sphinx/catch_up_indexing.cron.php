@@ -29,18 +29,18 @@ function catch_up_threads ()
     //NOTE: In theory, we could build up a multiple-insert, which might be
     //      more efficient (I swear I read that, but can't seem to find it
     //      again).  For the now, just pop them in one at a time.
+    $s = $sphinx->prepare("INSERT INTO thread (id, subject, member_id, date_posted) VALUES (?, ?, ?, ?)");
     while ($data = $DB->load_array())
     {
       print "thread ${data['id']} ${data['date_posted']}: " . substr($data['subject'], 0, 64) . "\n";
       $subject = $data['subject'];
       if (strlen($subject) > MAX_SIZE_TO_INDEX) $subject = substr($subject, 0, MAX_SIZE_TO_INDEX);
       
-      $s = $sphinx->prepare("INSERT INTO thread (id, subject, member_id, date_posted) VALUES (?, ?, ?, ?)");
       $r = $s->execute(array($data['id'], $subject, $data['member_id'], strtotime($data['date_posted'])));
       
       if (!$r)
       {
-        $e = $statement->errorInfo();
+        $e = $s->errorInfo();
         print "Error indexing thread ${data['id']}: ${e[2]}\n";
       }
     }
@@ -67,18 +67,18 @@ function catch_up_posts ()
     //NOTE: In theory, we could build up a multiple-insert, which might be
     //      more efficient (I swear I read that, but can't seem to find it
     //      again).  For the now, just pop them in one at a time.
+    $s = $sphinx->prepare("INSERT INTO thread_post (id, body, member_id, thread_id, date_posted) VALUES (?, ?, ?, ?, ?)");
     while ($data = $DB->load_array())
     {      
       $subject = $data['body'];
       if (strlen($subject) > MAX_SIZE_TO_INDEX) $subject = substr($subject, 0, MAX_SIZE_TO_INDEX);
       print "post ${data['id']} ${data['date_posted']}: " . str_replace("\n", "|", substr($subject, 0, 64)) . "\n";
 
-      $s = $sphinx->prepare("INSERT INTO thread_post (id, body, member_id, thread_id, date_posted) VALUES (?, ?, ?, ?, ?)");
       $r = $s->execute(array($data['id'], $subject, $data['member_id'], $data['thread_id'], strtotime($data['date_posted'])));
       
       if (!$r)
       {
-        $e = $statement->errorInfo();
+        $e = $s->errorInfo();
         print "Error indexing post ${data['id']}: ${e[2]}\n";
       }
     }
