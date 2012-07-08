@@ -57,8 +57,24 @@ class Search
   }
 
 
-  function query($query,$index,$offset=0)
+  function query($query,$index,$offset=0,$extra=NULL)
   {
+    if ($extra === NULL) $extra = array();
+    $where = "WHERE ";
+    if (isset($extra['start']) && isset($extra['end']))
+    {
+      $where .= 'date_posted >= ' . intval(strtotime($extra['start'])) . ' AND ';
+      $endtime = strtotime($extra['end']);
+      $endtime = strtotime("next day", $endtime);
+      $where .= 'date_posted < ' . intval($endtime) . ' AND ';
+    }
+    if (isset($extra['member']))
+    {
+      global $Core;
+      $id = $Core->idfromname($extra['member']);
+      if ($id) $where .= 'member_id=' . intval($id) . ' AND ';
+    }
+
     $empty = array("matches"=>array(), "total"=>0);
 
     $sphinx = $this->_connect(TRUE);
@@ -67,11 +83,11 @@ class Search
     if ($index != "thread" && $index != "thread_post") return $empty;
     $offset = intval($offset);
 
-    $s = $sphinx->prepare("SELECT COUNT(*), 1 AS all FROM $index WHERE MATCH(?) GROUP BY all");
+    $s = $sphinx->prepare("SELECT COUNT(*), 1 AS all FROM $index $where MATCH(?) GROUP BY all");
     if (!$this->_exec($s,array($query), "Failed to query index index")) return $empty;
     $total = $s->fetchColumn();
 
-    $s = $sphinx->prepare("SELECT id FROM $index WHERE MATCH(?) ORDER BY date_posted DESC LIMIT $offset,100");
+    $s = $sphinx->prepare("SELECT id FROM $index $where MATCH(?) ORDER BY date_posted DESC LIMIT $offset,100");
     if (!$this->_exec($s,array($query), "Failed to query index index")) return $empty;
     $r = array("matches"=>$s->fetchAll(PDO::FETCH_COLUMN, 0), "total"=>$total);
 
