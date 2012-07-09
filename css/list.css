@@ -6,7 +6,7 @@
   width: 100%;
   cursor: pointer;
 }
-.read { margin-left: -3px; }
+.read { margin-left: -3px; margin-right: -3px}
 .list li
 {
   float: left;

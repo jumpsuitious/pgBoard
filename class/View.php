@@ -85,6 +85,14 @@ class BoardView extends Base
       $ignore_list = array();
     }
 
+    $num_read = 0;
+    if(session('id') && ($this->type == VIEW_THREAD || $this->type == VIEW_MESSAGE))
+    {
+      // It'd be nice if this were in data[], but I can't see how to do it
+      // without a JOIN which seems like overkill.
+      $num_read = $DB->value("SELECT COALESCE(last_view_posts,0) FROM {$this->table}_member WHERE {$this->table}_id=$1 AND member_id=$2",array(id(),session('id')));
+    }
+
     if(session('id') && ($this->type == VIEW_THREAD || $this->type == VIEW_MESSAGE) && !$this->ajax)
     {
       if(sizeof($ignore_list) == 0) $list = "0";
@@ -133,6 +141,7 @@ class BoardView extends Base
 
     foreach($this->data as $row)
     {
+      $read = ($i > $num_read) ? SPACE.CSS_READ : '';
       $field = $this->prep_data($row);
       $ignoring = $soft_ignore ? array_key_exists($field[VIEW_CREATOR_ID], $ignore_list) : false;
       $show = $ignoring ? NON_BREAKING_SPACE.ARROW_RIGHT." <a href=\"javascript:;\" onclick=\"softignore({$field[VIEW_ID]},this)\">show</a>" : '';
@@ -140,7 +149,7 @@ class BoardView extends Base
       $count = "#{$i}";
       if(session('nopostnumber')) $count = "";
       print "<div id=\"view_".id()."_{$field[VIEW_ID]}_{$i}\" class=\"post\">\n";
-      print "<ul class=\"view\" id=\"post_{$field[VIEW_ID]}\">\n";
+      print "<ul class=\"view$read\" id=\"post_{$field[VIEW_ID]}\">\n";
       print "  <li class=\"info even$field[me]\">\n";
       print "    <div class=\"postinfo\">".$Core->member_link($field[VIEW_CREATOR_NAME])." posted this on $field[date]</div>\n";
       print "    <div class=\"controls\">$field[quote]$field[admin]$show</div>\n";
